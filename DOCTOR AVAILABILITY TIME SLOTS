@@ -1,0 +1,122 @@
+db.run(`
+  CREATE TABLE IF NOT EXISTS doctorAvailability (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doctorId INTEGER,
+    day TEXT,
+    startTime TEXT,
+    endTime TEXT
+  )
+`);
+
+
+
+app.post("/set-availability", (req, res) => {
+  const { doctorId, day, startTime, endTime } = req.body;
+
+  db.run(
+    `INSERT INTO doctorAvailability (doctorId, day, startTime, endTime)
+     VALUES (?, ?, ?, ?)`,
+    [doctorId, day, startTime, endTime],
+    err => {
+      if (err) return res.json({ success: false });
+      res.json({ success: true });
+    }
+  );
+});
+
+
+
+
+app.get("/get-availability", (req, res) => {
+  const doctorId = req.query.doctorId;
+
+  db.all(
+    `SELECT * FROM doctorAvailability WHERE doctorId = ?`,
+    [doctorId],
+    (err, rows) => {
+      if (err) return res.json({ success: false });
+      res.json({ success: true, slots: rows });
+    }
+  );
+});
+
+
+
+
+<h2>Set Availability</h2>
+
+<select id="day">
+  <option value="Monday">Monday</option>
+  <option value="Tuesday">Tuesday</option>
+  <option value="Wednesday">Wednesday</option>
+  <option value="Thursday">Thursday</option>
+  <option value="Friday">Friday</option>
+  <option value="Saturday">Saturday</option>
+  <option value="Sunday">Sunday</option>
+</select>
+
+<label>Start Time:</label>
+<input type="time" id="start">
+
+<label>End Time:</label>
+<input type="time" id="end">
+
+<button onclick="saveAvailability()">Save</button>
+
+<h3>Your Availability</h3>
+<div id="slots"></div>
+
+<script>
+const user = JSON.parse(localStorage.getItem("citycare_user"));
+
+if (!user || !user.specialization) {
+  alert("Only doctors can access this page.");
+  window.location.href = "login.html";
+}
+
+async function saveAvailability() {
+  const res = await fetch("/set-availability", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      doctorId: user.id,
+      day: day.value,
+      startTime: start.value,
+      endTime: end.value
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("Availability saved");
+    loadSlots();
+  }
+}
+
+async function loadSlots() {
+  const res = await fetch(`/get-availability?doctorId=${user.id}`);
+  const data = await res.json();
+
+  const container = document.getElementById("slots");
+  container.innerHTML = "";
+
+  data.slots.forEach(slot => {
+    container.innerHTML += `
+      <p><strong>${slot.day}</strong>: ${slot.startTime} - ${slot.endTime}</p>
+    `;
+  });
+}
+
+loadSlots();
+</script>
+
+
+
+
+
+
+
+<button onclick="window.location.href='doctor-availability.html'">
+  Set Availability
+</button>
