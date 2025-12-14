@@ -1,0 +1,79 @@
+app.get("/patient-appointments", (req, res) => {
+  const patientId = req.query.patientId;
+
+  const query = `
+    SELECT appointments.id, appointments.date, appointments.time,
+           users.name AS doctorName, users.specialization AS doctorSpec
+    FROM appointments
+    INNER JOIN users ON appointments.doctorId = users.id
+    WHERE appointments.patientId = ?
+    ORDER BY appointments.date DESC, appointments.time DESC
+  `;
+
+  db.all(query, [patientId], (err, rows) => {
+    if (err) return res.json({ success: false });
+
+    res.json({
+      success: true,
+      history: rows
+    });
+  });
+});
+
+
+
+<h2>Your Appointment History</h2>
+
+<div id="history"></div>
+
+<script>
+const user = JSON.parse(localStorage.getItem("citycare_user"));
+
+if (!user || user.specialization) {
+  alert("Only patients can access this page.");
+  window.location.href = "dashboard.html";
+}
+
+async function loadHistory() {
+  const res = await fetch(`/patient-appointments?patientId=${user.id}`);
+  const data = await res.json();
+
+  const container = document.getElementById("history");
+  container.innerHTML = "";
+
+  if (!data.success || data.history.length === 0) {
+    container.innerHTML = "<p>No appointment history.</p>";
+    return;
+  }
+
+  data.history.forEach(app => {
+    container.innerHTML += `
+      <div class="history-card">
+        <p><strong>Doctor:</strong> ${app.doctorName}</p>
+        <p><strong>Specialization:</strong> ${app.doctorSpec}</p>
+        <p><strong>Date:</strong> ${app.date}</p>
+        <p><strong>Time:</strong> ${app.time}</p>
+        <hr>
+      </div>
+    `;
+  });
+}
+
+loadHistory();
+</script>
+
+<style>
+.history-card {
+  background: #f4f4f4;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+</style>
+
+
+
+<button onclick="window.location.href='patient-history.html'">
+  View Appointment History
+</button>
+
