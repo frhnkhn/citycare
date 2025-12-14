@@ -1,0 +1,103 @@
+data.doctors.forEach(doc => {
+  const card = `
+    <div class="doctor-card">
+      <h4>${doc.name}</h4>
+      <p><strong>City:</strong> ${doc.city}</p>
+      <p><strong>Specialization:</strong> ${doc.specialization}</p>
+      <p><strong>Email:</strong> ${doc.email}</p>
+
+      <button onclick="bookNow(${doc.id}, '${doc.name}')">
+        Book Appointment
+      </button>
+    </div>
+    <hr>
+  `;
+  resultsDiv.innerHTML += card;
+});
+
+
+<script>
+function bookNow(doctorId, doctorName) {
+  // save doctor info temporarily
+  localStorage.setItem("appointment_doctorId", doctorId);
+  localStorage.setItem("appointment_doctorName", doctorName);
+
+  window.location.href = "appointment.html";
+}
+</script>
+
+
+
+<h2>Book Appointment</h2>
+
+<div id="doctorName"></div>
+
+<label>Date:</label>
+<input type="date" id="date">
+
+<label>Time:</label>
+<input type="time" id="time">
+
+<button onclick="confirmBooking()">Confirm Appointment</button>
+
+<script>
+document.getElementById("doctorName").innerHTML =
+  "<h3>Doctor: " + localStorage.getItem("appointment_doctorName") + "</h3>";
+
+async function confirmBooking() {
+  const user = JSON.parse(localStorage.getItem("citycare_user"));
+
+  const res = await fetch("/book-appointment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      patientId: user.id,
+      doctorId: localStorage.getItem("appointment_doctorId"),
+      date: document.getElementById("date").value,
+      time: document.getElementById("time").value
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("Appointment booked successfully!");
+    window.location.href = "dashboard.html";
+  } else {
+    alert("Error booking appointment");
+  }
+}
+</script>
+
+
+
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS appointments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    patientId INTEGER,
+    doctorId INTEGER,
+    date TEXT,
+    time TEXT
+  )
+`);
+
+
+
+
+app.post("/book-appointment", (req, res) => {
+  const { patientId, doctorId, date, time } = req.body;
+
+  db.run(
+    `INSERT INTO appointments (patientId, doctorId, date, time)
+     VALUES (?, ?, ?, ?)`,
+    [patientId, doctorId, date, time],
+    function (err) {
+      if (err) {
+        return res.json({ success: false });
+      }
+      return res.json({ success: true });
+    }
+  );
+});
+
